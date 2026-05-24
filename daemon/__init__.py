@@ -1,0 +1,1 @@
+# euczelnia-bridge daemon package

@@ -1,0 +1,15 @@
+{
+  "poll_interval_seconds": 12.0,
+  "mode": "stateless",
+  "max_history_turns": 20,
+  "cleanup_on_disconnect": false,
+  "command_prefix": "!",
+  "sentinel_start": "«AI»",
+  "sentinel_end": "«/AI»",
+  "data_dir": "./data",
+  "ai_gateway": {
+    "base_url": "http://localhost:11434/v1",
+    "api_key": "local-key",
+    "model": "gpt-4o-mini"
+  }
+}

@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Project specific
+config/config.json
+config/.env
+data/*
+!data/.gitkeep
+daemon.log
+daemon_status.json
+debug_login/
+.pytest_cache/
