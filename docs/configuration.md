@@ -59,6 +59,15 @@ The behavior of the `euczelnia-bridge` daemon is controlled by configuration opt
 - **Description**: Directory where runtime state, logs, status, and SQLite databases are stored.
 - **Runtime Mutable**: No.
 
+### `engine`
+- **Type**: `string`
+- **Default**: `"hermes"`
+- **Allowed Values**: `"hermes"`, `"openai"`
+- **Description**: The completions engine backend to use.
+  - `hermes`: Spawns the local `hermes` CLI subprocess, routing queries through the Hermes agent loop (with tool-calling, web search, file access, and reasoning).
+  - `openai`: Calls the OpenAI-compatible HTTP completions API.
+- **Runtime Mutable**: No (requires daemon restart).
+
 ### `knowledge_files`
 - **Type**: `array of strings`
 - **Default**: `[]`

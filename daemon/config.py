@@ -25,6 +25,7 @@ class DaemonConfig:
         self.sentinel_end: str = "«/AI»"
         self.data_dir: str = "./data"
         self.knowledge_files: List[str] = []
+        self.engine: str = "hermes"
 
         self.ai_gateway: Dict[str, Any] = {
             "base_url": "http://localhost:11434/v1",
@@ -77,6 +78,7 @@ class DaemonConfig:
         self.sentinel_start = str(data.get("sentinel_start", self.sentinel_start))
         self.sentinel_end = str(data.get("sentinel_end", self.sentinel_end))
         self.data_dir = str(data.get("data_dir", self.data_dir))
+        self.engine = str(data.get("engine", self.engine))
         
         # Load knowledge files if configured in JSON
         if "knowledge_files" in data:
@@ -144,6 +146,11 @@ def parse_args_and_load_config(argv: List[str]) -> DaemonConfig:
     parser.add_argument("--config", type=str, default=DEFAULT_CONFIG_PATH, help="Path to config.json.")
     parser.add_argument("--data-dir", type=str, help="Directory for writing database, status, and logs.")
     parser.add_argument(
+        "--engine",
+        choices=["hermes", "openai"],
+        help="The completions engine backend (hermes or openai)."
+    )
+    parser.add_argument(
         "--knowledge-file",
         action="append",
         dest="knowledge_files",
@@ -172,6 +179,8 @@ def parse_args_and_load_config(argv: List[str]) -> DaemonConfig:
         config.user_base_prompt = args.user_prompt
     if args.data_dir is not None:
         config.data_dir = args.data_dir
+    if args.engine is not None:
+        config.engine = args.engine
     if args.knowledge_files:
         # Extend configured knowledge files with CLI ones
         config.knowledge_files.extend(args.knowledge_files)

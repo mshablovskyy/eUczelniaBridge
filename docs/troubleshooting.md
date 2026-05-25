@@ -79,3 +79,25 @@ If `login/login.py` fails, check the files in `data/debug_login/` and classify t
   ```bash
   ./venv/bin/playwright install chromium
   ```
+
+### Hermes CLI Subprocess Errors
+These troubleshooting steps apply when using the default `hermes` completions engine.
+
+- **Missing Hermes Binary**:
+  - **Symptom**: The daemon log indicates execution failure: `[Errno 2] No such file or directory` or cannot find executable.
+  - **Resolution**: Confirm Hermes is installed. If installed in a non-standard location, set the environment variable:
+    ```bash
+    export HERMES_BIN="/custom/path/to/hermes"
+    ```
+    before running the daemon.
+- **Hermes CLI Timeout**:
+  - **Symptom**: The daemon returns the error: `Hermes CLI subprocess execution timed out after 300 seconds.`
+  - **Cause**: The agent loop took longer than 5 minutes to complete due to complex multi-step tool execution or slow model completions.
+  - **Resolution**: Ensure the underlying LLM model is fast/responsive, and your network connection is stable.
+- **Hermes CLI Exit Code Error**:
+  - **Symptom**: The daemon log reports: `Hermes CLI process failed with exit code: [code]`.
+  - **Resolution**: Run the Hermes query manually in your terminal to see the diagnostics error output:
+    ```bash
+    hermes chat -q "test" --yolo
+    ```
+

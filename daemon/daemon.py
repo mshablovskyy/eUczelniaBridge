@@ -19,6 +19,7 @@ from eUczelniaMessenger.models import SendResult
 from daemon.config import DaemonConfig, parse_args_and_load_config
 from daemon.db import DatabaseManager
 from daemon.ai_client import AIClient
+from daemon.hermes_client import HermesClient
 from daemon.commands import CommandHandler, is_command, parse_command
 from daemon.knowledge import KnowledgeBase
 
@@ -211,11 +212,14 @@ class UczelniaDaemon:
             self.conversation_id, self.config.mode, self.config.model
         )
 
-        # Initialize Async OpenAI client wrapper
-        self.ai_client = AIClient(
-            base_url=self.config.ai_gateway["base_url"],
-            api_key=self.config.ai_gateway["api_key"],
-        )
+        # Initialize completions client depending on the engine setting
+        if self.config.engine == "openai":
+            self.ai_client = AIClient(
+                base_url=self.config.ai_gateway["base_url"],
+                api_key=self.config.ai_gateway["api_key"],
+            )
+        else:
+            self.ai_client = HermesClient()
 
         # Initialize knowledge base
         self.knowledge_base = KnowledgeBase(self.config.knowledge_files)

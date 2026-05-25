@@ -7,6 +7,7 @@
   "sentinel_start": "«AI»",
   "sentinel_end": "«/AI»",
   "data_dir": "./data",
+  "engine": "hermes",
   "ai_gateway": {
     "base_url": "http://localhost:11434/v1",
     "api_key": "local-key",

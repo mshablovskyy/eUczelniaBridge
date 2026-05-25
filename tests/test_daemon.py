@@ -30,6 +30,7 @@ def base_config() -> DaemonConfig:
     config.cookie_name = "cookie"
     config.cookie_value = "val"
     config.user_id = 999
+    config.engine = "openai"
     return config
 
 
@@ -285,3 +286,18 @@ async def test_daemon_send_response_splitting(base_config: DaemonConfig) -> None
 
             mock_db.insert_message.assert_any_call(42, 7001, "assistant", "part1", ANY)
             mock_db.insert_message.assert_any_call(42, 7002, "assistant", "part2", ANY)
+
+
+@pytest.mark.asyncio
+async def test_daemon_hermes_engine_initialization(base_config: DaemonConfig) -> None:
+    base_config.engine = "hermes"
+    with patch("daemon.daemon.DatabaseManager") as mock_db_class, \
+            patch("daemon.daemon.MessengerClient") as mock_client_class, \
+            patch("daemon.daemon.HermesClient") as mock_hermes_class, \
+            patch("daemon.daemon.KnowledgeBase"):
+
+        mock_db = mock_db_class.return_value
+        mock_db.create_session.return_value = 42
+
+        daemon = UczelniaDaemon(base_config)
+        mock_hermes_class.assert_called_once()

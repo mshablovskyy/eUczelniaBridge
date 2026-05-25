@@ -6,7 +6,11 @@ This document defines the `euczelnia-bridge` skill for AI agents (e.g., OpenClaw
 
 ## 1. Overview & Architecture
 
-`euczelnia-bridge` is a self-contained automation system that logs into the Cracow University of Economics (UEK) e-Uczelnia portal (CAS), captures active Moodle session cookies, and spawns an asynchronous daemon. The daemon polls a Moodle chat conversation and replies to incoming messages using an OpenAI-compatible completions gateway.
+`euczelnia-bridge` is a self-contained automation system that logs into the Cracow University of Economics (UEK) e-Uczelnia portal (CAS), captures active Moodle session cookies, and spawns an asynchronous daemon. The daemon polls a Moodle chat conversation and replies to incoming messages.
+
+It supports two completions engine backends:
+1. **Hermes (Default)**: Routes Moodle messages through the local `hermes chat -q` CLI subprocess, giving the chatbot full access to the Hermes agent loop (including web searching, file access, code execution, skills, and multi-turn reasoning).
+2. **OpenAI Fallback**: Connects directly to any OpenAI-compatible HTTP completions endpoint (Ollama, local proxy, OpenAI, etc.).
 
 ```mermaid
 graph TD
@@ -15,8 +19,11 @@ graph TD
     Agent -->|3. Launches daemon.py| Daemon[UczelniaDaemon]
     Daemon -->|4. Polls messages| Moodle[eUczelnia Moodle Chat]
     Daemon -->|5. Queries TF-IDF| KB[Knowledge Base]
-    Daemon -->|6. Completion Request| AIGateway[OpenAI-Compatible API]
-    Daemon -->|7. Sends Reply| Moodle
+    Daemon -->|6. Check engine config| EngineDecision{Engine?}
+    EngineDecision -->|hermes| HermesCLI[spawn: hermes chat -q]
+    EngineDecision -->|openai| OpenAIAPI[HTTP: openai.chat.completions]
+    HermesCLI -->|7a. Sends Reply| Moodle
+    OpenAIAPI -->|7b. Sends Reply| Moodle
     Daemon -->|8. Writes State| Status[daemon_status.json]
     Agent -->|9. Reads State| Status
 ```
@@ -62,8 +69,28 @@ If `install.sh` fails, perform the following steps:
    EUCZELNIA_USERNAME=your_cas_username
    EUCZELNIA_PASSWORD=your_cas_password
    ```
-2. **AI Gateway**: Configure your completions gateway in `config/config.json`. By default, it points to local Ollama. Update the model and credentials as needed:
+2. **Configuration**: Edit `config/config.json`. By default, the daemon is configured to use the `hermes` engine:
    ```json
+   {
+     "poll_interval_seconds": 12.0,
+     "mode": "stateless",
+     "max_history_turns": 20,
+     "cleanup_on_disconnect": false,
+     "command_prefix": "!",
+     "sentinel_start": "«AI»",
+     "sentinel_end": "«/AI»",
+     "data_dir": "./data",
+     "engine": "hermes",
+     "ai_gateway": {
+       "model": "deepseek-v4-flash-free"
+     }
+   }
+   ```
+
+   ### Switching to OpenAI Fallback
+   If you want to use a direct HTTP API completions endpoint instead, change the `engine` parameter to `"openai"` and configure the gateway parameters:
+   ```json
+   "engine": "openai",
    "ai_gateway": {
      "base_url": "https://api.openai.com/v1",
      "api_key": "your-openai-api-key",
@@ -73,7 +100,34 @@ If `install.sh` fails, perform the following steps:
 
 ---
 
-## 4. Session Workflow (Step-by-Step)
+## 4. Hermes Engine Details
+
+### Dynamic Binary Path Resolution
+When using `engine: hermes`, the client dynamically searches for the `hermes` CLI binary in the following order:
+1. Environment variable `HERMES_BIN` (if set, e.g., `/usr/local/bin/hermes`).
+2. System PATH lookup via system utilities.
+3. Common virtual environment locations:
+   - `~/.hermes/hermes-agent/venv/bin/hermes`
+   - `~/.gemini/hermes-agent/venv/bin/hermes`
+4. Fallback execution keyword `"hermes"`.
+
+If your Hermes installation is in a custom path, configure it in the environment before launching the daemon:
+```bash
+export HERMES_BIN="/custom/path/to/hermes"
+```
+
+### Conversational History & Context Serialization
+Since the Hermes CLI operates statelessly per execution, the daemon serializes multi-turn memory from the local SQLite database into the prompt text:
+```
+Conversation history:
+<user>: Message turns
+<assistant>: AI replies
+```
+Hermes reads this block as part of its instructions. The actual completions model configured inside Hermes's own configuration files will be used; the `ai_gateway.model` property in `config.json` is purely cosmetic and is only used to report active model status via `!status` commands.
+
+---
+
+## 5. Session Workflow (Step-by-Step)
 
 To initialize and run this skill, follow this exact checklist:
 
@@ -126,7 +180,7 @@ Ask the human user for the core instructions or personality guidelines they want
 Once resolved, proceed to Step 5.
 
 ### Step 5: Launch UczelniaDaemon
-Run `daemon/daemon.py` using arguments from `data/session.json`. You can also pass `--user-prompt` and `--knowledge-file` arguments:
+Run `daemon/daemon.py` using arguments from `data/session.json`. You can select the backend using `--engine` (`hermes` or `openai`):
 
 ```bash
 # Read variables from data/session.json
@@ -135,13 +189,14 @@ USER_ID=\$(./venv/bin/python -c "import json; print(json.load(open('data/session
 COOKIE_NAME=\$(./venv/bin/python -c "import json; print(list(json.load(open('data/session.json'))['cookies'].keys())[0])")
 COOKIE_VALUE=\$(./venv/bin/python -c "import json; print(list(json.load(open('data/session.json'))['cookies'].values())[0])")
 
-# Run in background (nohup or screen/tmux)
+# Run in background with hermes engine (default)
 nohup ./venv/bin/python daemon/daemon.py \\
   --conversation-id <CONV_ID> \\
   --user-id "\$USER_ID" \\
   --sesskey "\$SESSKEY" \\
   --cookie-name "\$COOKIE_NAME" \\
   --cookie-value "\$COOKIE_VALUE" \\
+  --engine hermes \\
   --user-prompt "Your base prompt instructions" \\
   --knowledge-file path/to/kb_doc1.md \\
   --knowledge-file path/to/kb_doc2.txt \\
@@ -169,7 +224,7 @@ Expected output:
 
 ---
 
-## 5. Knowledge Base (TF-IDF)
+## 6. Knowledge Base (TF-IDF)
 
 The daemon includes a built-in, lightweight text-retrieval module (`daemon/knowledge.py`) that uses TF-IDF similarity.
 - **Loading Files**: Specify files using `--knowledge-file <path>` CLI options. Files should be markdown (`.md`) or text (`.txt`).
@@ -178,7 +233,7 @@ The daemon includes a built-in, lightweight text-retrieval module (`daemon/knowl
 
 ---
 
-## 6. Scheduled Sessions (Cron)
+## 7. Scheduled Sessions (Cron)
 
 To set up recurring sessions or run the daemon on a schedule:
 1. Create a script `run_scheduled.sh` that loads credentials, runs `login.py`, extracts session keys, and executes `daemon.py` with a timeout or run duration.
@@ -190,7 +245,7 @@ To set up recurring sessions or run the daemon on a schedule:
 
 ---
 
-## 7. In-Chat Commands Reference
+## 8. In-Chat Commands Reference
 
 Participants can control the daemon directly from the Moodle chat using the configured command prefix (default `!`).
 
@@ -206,4 +261,4 @@ Participants can control the daemon directly from the Moodle chat using the conf
 | `!knowledge` | `show` | Displays loaded knowledge base files and chunk counts. |
 | `!disconnect` | None | Gracefully shuts down the daemon. |
 
-For detailed behavior of each command, refer to docs/commands.md
+For detailed behavior of each command, refer to [docs/commands.md](file:///Users/mshablovskyy/Python/euczelniaScrapper/euczelnia-bridge/docs/commands.md).
