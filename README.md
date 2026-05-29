@@ -4,6 +4,9 @@ An AI assistant integration for the university e-Uczelnia Moodle messenger chat.
 
 *Note: This skill was designed for and tested primarily using the **Hermes** agent loop.*
 
+> [!TIP]
+> **TL;DR**: To connect to eUczelnia, point your AI agent at this repository/folder and it will figure the installation and setup out automatically.
+
 ---
 
 ## What is this?
@@ -51,8 +54,16 @@ graph TD
 
 ## Quick Start (5 Steps)
 
-### Step 1: Install
-Clone this package and run the installation script:
+### 🤖 AI Agent Auto-Installation & Setup (Recommended)
+If you are using an AI coding or agent assistant (such as Hermes):
+Simply send a link to this repository/folder to your agent and say:
+> *"Install this skill/bridge and set it up for me."*
+
+The agent will read the guidelines in `SKILL.md` and handle the entire setup automatically.
+
+
+### Manual Installation
+If you prefer to set up manually, clone this package and run the installation script:
 ```bash
 bash install.sh
 ```

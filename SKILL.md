@@ -32,6 +32,21 @@ graph TD
 
 ## 2. Installation
 
+### 🤖 AI Agent Auto-Installation & Setup (Recommended)
+If you are using an AI coding or agent assistant (such as Hermes, OpenClaw, or Antigravity):
+1. **User Action**: Simply send this skill folder or zip file to your agent and say:
+   > *"Install this skill/bridge and set it up for me."*
+2. **Agent Action (Instructions for the AI Agent)**:
+   When requested to install and set up this skill, you must execute the following actions:
+   - Run `bash install.sh` inside this directory to build the virtual environment, install dependencies, and install Playwright.
+   - Look for credentials. If they are not present in `config/.env` or environment variables, prompt the user for their Cracow University of Economics (UEK) CAS credentials (username & password) securely, then write them to `config/.env`.
+   - Run the CAS login script: `./venv/bin/python login/login.py --output data/session.json`.
+   - Resolve the conversation ID: List the top conversations or ask the user which conversation/name they want to interact with, and retrieve the target `conversation_id`.
+   - Negotiate a custom base system prompt with the user or use a default one.
+   - Start the daemon process: run the daemon in the background (e.g., `nohup ./venv/bin/python daemon/daemon.py ... > data/daemon.log 2>&1 &`).
+   - Confirm setup completion, reporting the running PID and status from `data/daemon_status.json`.
+
+### Manual Installation
 Run the automated installer inside the `euczelnia-bridge/` folder:
 
 ```bash
@@ -139,7 +154,7 @@ Run `login/login.py` to automate CAS authentication and capture the active cooki
 ```bash
 ./venv/bin/python login/login.py --output data/session.json
 ```
-If the command fails, refer to [docs/troubleshooting.md](file:///Users/mshablovskyy/Python/euczelniaScrapper/euczelnia-bridge/docs/troubleshooting.md) and check `data/debug_login/` logs.
+If the command fails, refer to [troubleshooting.md](docs/troubleshooting.md) and check `data/debug_login/` logs.
 
 ### Step 3: Determine the Target Conversation
 You can resolve a target conversation by:
@@ -261,4 +276,4 @@ Participants can control the daemon directly from the Moodle chat using the conf
 | `!knowledge` | `show` | Displays loaded knowledge base files and chunk counts. |
 | `!disconnect` | None | Gracefully shuts down the daemon. |
 
-For detailed behavior of each command, refer to [docs/commands.md](file:///Users/mshablovskyy/Python/euczelniaScrapper/euczelnia-bridge/docs/commands.md).
+For detailed behavior of each command, refer to [commands.md](docs/commands.md).
